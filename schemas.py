@@ -1,5 +1,6 @@
 import enum
 from pydantic import BaseModel
+from typing import Union
 
 
 class OrderStatus(enum.Enum):
@@ -10,7 +11,7 @@ class OrderStatus(enum.Enum):
 # для создания товара
 class ProductCreate(BaseModel):
     name: str
-    description: str
+    description: Union[str, None] = None
     price: float
     quantity: int
 

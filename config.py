@@ -1,0 +1,1 @@
+DATABASE_URL = 'postgresql+asyncpg://emobile:test@db/warehouse'
