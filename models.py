@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy.orm import mapped_column, Mapped, DeclarativeBase
-from sqlalchemy import String, Integer, FLOAT, Enum, DateTime, ForeignKey
+from sqlalchemy import String, Integer, FLOAT, Enum, DateTime, ForeignKey, func
 from sqlalchemy.ext.asyncio import AsyncAttrs
 
 from schemas import OrderStatus
@@ -26,7 +26,7 @@ class Order(Base):
     __tablename__ = 'orders'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime,server_default=func.now())
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus))
 
 
