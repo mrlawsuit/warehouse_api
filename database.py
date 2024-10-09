@@ -1,15 +1,16 @@
+from typing import List
+
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy import select, update, delete
 
-from models import Product
+from models import Product, Order, OrderItem
 from config import DATABASE_URL
-from schemas import ProductCreate
+from schemas import ProductCreate, OrderCreate, OrderStatus, OrderItemCreate
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 
 
 async_session = async_sessionmaker(engine, expire_on_commit=False)
-
 
 # корутины для таблицы товаров
 
@@ -59,3 +60,52 @@ async def delete_product_db(id: int):
             .where(Product.id == id)
         )
         await session.commit()
+
+
+async def get_product_by_id_db(id):
+    async with async_session() as session:
+        result = await session.execute(select(Product).where(Product.id == id))
+        product = result.scalar_one_or_none()
+    return product
+
+
+# инфраструктура для таблицы заказов
+
+class OrderReserv:
+    """
+    Класс для работы с количеством товара
+    """
+    @staticmethod
+    async def reserve_product(product_id: int, quantity_needed: int) -> Product:
+        product = await get_product_by_id_db(product_id)
+        if not product or product.quantity < quantity_needed:
+            raise ValueError("Недостаточно товара на складе или товар не найден.")
+        product.quantity -= quantity_needed
+        return product
+
+
+class OrderFactory:
+    @staticmethod
+    async def create_order(items_data: List[OrderItemCreate]) -> Order:
+        """
+        Создает заказ на основе списка товаров, введенных пользовавтелем.
+        """
+        order = Order(status=OrderStatus.in_process)
+
+        for item_data in items_data:
+            product_id = item_data.model_dump()['product_id']
+            quantity_needed = item_data.model_dump()['quantity']
+            product = await OrderReserv.reserve_product(product_id, quantity_needed)
+            
+            order_item = OrderItem(
+                product=product,
+                order_quantity=quantity_needed
+            )
+            order.items.append(order_item)
+        async with async_session() as session:
+            session.add(order)
+            await session.commit()
+            await session.refresh(order)
+        return order
+
+

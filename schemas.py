@@ -17,5 +17,11 @@ class ProductCreate(BaseModel):
 
 
 # для создания заказа 
+class OrderItemCreate(BaseModel):
+    product_id: int
+    quantity: int
+
+
 class OrderCreate(BaseModel):
     items: list
+

@@ -1,8 +1,10 @@
+from typing import List
+
 from fastapi import FastAPI, HTTPException, Depends, status
-from schemas import OrderCreate, ProductCreate
+from schemas import OrderCreate, ProductCreate, OrderItemCreate
 
 import database
-
+from database import OrderFactory
 
 app = FastAPI()
 
@@ -44,5 +46,5 @@ async def delete_product(id: int):
 
 # эндпоинты для orders
 @app.post('/orders')
-async def create_order():
-    pass
+async def create_order(items_data: List[OrderItemCreate]):
+    await OrderFactory.create_order(items_data)
