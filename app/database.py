@@ -14,7 +14,7 @@ async_session = async_sessionmaker(engine, expire_on_commit=False)
 
 # корутины для таблицы товаров
 
-async def create_product_db(product: ProductCreate):
+async def create_product_db(product: ProductCreate) -> None:
     # print(product.model_dump())
     async with async_session() as session:
         new_product = product.model_dump()
@@ -24,7 +24,7 @@ async def create_product_db(product: ProductCreate):
         await session.commit()
 
 
-async def get_products_db():
+async def get_products_db() -> Product:
     async with async_session() as session:
         result = await session.execute(select(Product))
         products = result.scalars().all()
@@ -32,7 +32,7 @@ async def get_products_db():
     return products
 
 
-async def get_product_description_db(id: int):
+async def get_product_description_db(id: int) -> Product:
     async with async_session() as session:
         result = await session.execute(
             select(Product.description).where(Product.id == id)
@@ -42,7 +42,7 @@ async def get_product_description_db(id: int):
     return description
 
 
-async def update_product_discription_db(id: int, new_description: str):
+async def update_product_discription_db(id: int, new_description: str) -> Product:
     async with async_session() as session:
         updated = await session.execute(
             update(Product)
@@ -53,7 +53,7 @@ async def update_product_discription_db(id: int, new_description: str):
         print(updated)
     return updated
 
-async def delete_product_db(id: int):
+async def delete_product_db(id: int) -> None:
     async with async_session() as session:
         await session.execute(
             delete(Product)
@@ -62,10 +62,12 @@ async def delete_product_db(id: int):
         await session.commit()
 
 
-async def get_product_by_id_db(id):
+async def get_product_by_id_db(id: int) -> Product:
     async with async_session() as session:
         result = await session.execute(select(Product).where(Product.id == id))
         product = result.scalar_one_or_none()
+    if not product:
+        raise ValueError('Такого товара нет в базе')
     return product
 
 
@@ -79,7 +81,7 @@ class OrderReserv:
     async def reserve_product(product_id: int, quantity_needed: int) -> Product:
         product = await get_product_by_id_db(product_id)
         if not product or product.quantity < quantity_needed:
-            raise ValueError("Недостаточно товара на складе или товар не найден.")
+            raise ValueError('Недостаточно товара на складе или товар не найден.')
         product.quantity -= quantity_needed
         return product
 
@@ -108,4 +110,25 @@ class OrderFactory:
             await session.refresh(order)
         return order
 
+async def get_orders_db() -> Order:
+    async with async_session() as session:
+        result = await session.execute(select(Order))
+        orders = result.scalars().all()
+    return orders
+
+
+async def get_order_by_id_db(id: int) -> Order:
+    async with async_session() as session:
+        result = await session.execute(select(Order).where(Order.id == id))
+        order = result.scalars().one_or_none()
+    if not order:
+        raise ValueError('Такого заказа нет в базе')
+    return order
+
+
+async def order_status_refresh_db(id: int, new_status: OrderStatus):
+    async with async_session() as session:
+        updated = await session.execute(update(Order).where(Order.id == id).values(status=new_status))
+        await session.commit()
+    return updated
 

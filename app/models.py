@@ -1,9 +1,12 @@
+from typing import List
 from datetime import datetime
+
 from sqlalchemy.orm import mapped_column, Mapped, DeclarativeBase, relationship
 from sqlalchemy import String, Integer, FLOAT, Enum, DateTime, ForeignKey, func
 from sqlalchemy.ext.asyncio import AsyncAttrs
-from schemas import OrderStatus
-from typing import List
+
+from app.schemas import OrderStatus
+
 
 class Base(AsyncAttrs, DeclarativeBase):
     def to_dict(self):
@@ -24,7 +27,7 @@ class Order(Base):
     __tablename__ = 'orders'
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus))
 
     items: Mapped[List['OrderItem']] = relationship('OrderItem', back_populates='order')

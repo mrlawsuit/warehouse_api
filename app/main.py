@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import FastAPI, HTTPException, Depends, status
-from schemas import OrderCreate, ProductCreate, OrderItemCreate
+from schemas import OrderCreate, ProductCreate, OrderItemCreate, OrderStatus
 
 import database
 from database import OrderFactory
@@ -48,3 +48,20 @@ async def delete_product(id: int):
 @app.post('/orders')
 async def create_order(items_data: List[OrderItemCreate]):
     await OrderFactory.create_order(items_data)
+
+
+@app.get('/orders')
+async def get_orders():
+    orders = await database.get_orders_db()
+    return orders
+
+
+@app.get('/orders/{id}')
+async def get_order_by_id(id: int):
+    order = await database.get_order_by_id_db(id)
+    return order
+
+@app.patch('/orders/{id}/status')
+async def order_status_refresh(id: int, new_status: OrderStatus):
+    await database.order_status_refresh_db(id, new_status)
+
