@@ -11,7 +11,8 @@ from app.schemas import OrderStatus
 class Base(AsyncAttrs, DeclarativeBase):
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
-        
+
+
 class Product(Base):
     __tablename__ = 'products'
 
@@ -20,8 +21,9 @@ class Product(Base):
     description: Mapped[str] = mapped_column(String(255))
     price: Mapped[float] = mapped_column(FLOAT)
     quantity: Mapped[int] = mapped_column(Integer)
-    
+
     order_items: Mapped[List['OrderItem']] = relationship('OrderItem', back_populates='product')
+
 
 class Order(Base):
     __tablename__ = 'orders'
@@ -31,6 +33,7 @@ class Order(Base):
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus))
 
     items: Mapped[List['OrderItem']] = relationship('OrderItem', back_populates='order')
+
 
 class OrderItem(Base):
     __tablename__ = 'order_items'

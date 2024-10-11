@@ -7,7 +7,8 @@ class OrderStatus(enum.Enum):
     in_process = 'в процессе'
     sent = 'отправлен'
     delivered = 'доставлен'
-    
+
+
 # для создания товара
 class ProductCreate(BaseModel):
     name: str
@@ -16,7 +17,7 @@ class ProductCreate(BaseModel):
     quantity: int
 
 
-# для создания заказа 
+# для создания заказа
 class OrderItemCreate(BaseModel):
     product_id: int
     quantity: int
@@ -24,4 +25,3 @@ class OrderItemCreate(BaseModel):
 
 class OrderCreate(BaseModel):
     items: list
-

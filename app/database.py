@@ -1,71 +1,79 @@
-from typing import List
+from typing import List, AsyncGenerator
 
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import (
+    create_async_engine, async_sessionmaker, AsyncSession
+)
 from sqlalchemy import select, update, delete
 
-from models import Product, Order, OrderItem
-from config import DATABASE_URL
-from schemas import ProductCreate, OrderCreate, OrderStatus, OrderItemCreate
+from app.models import Product, Order, OrderItem
+from app.config import DATABASE_URL
+from app.schemas import ProductCreate, OrderStatus, OrderItemCreate
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 
 
 async_session = async_sessionmaker(engine, expire_on_commit=False)
 
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
+        yield session
+
+
 # корутины для таблицы товаров
 
-async def create_product_db(product: ProductCreate) -> None:
-    # print(product.model_dump())
-    async with async_session() as session:
-        new_product = product.model_dump()
-        # print(f'product table {type(Product(**new_product))}')
-        # print(f'variable new product {type(new_product)}')
-        session.add(Product(**new_product))
-        await session.commit()
+async def create_product_db(
+        session: AsyncSession,
+        product: ProductCreate
+) -> None:
+    new_product = product.model_dump()
+    session.add(Product(**new_product))
+    await session.commit()
 
 
-async def get_products_db() -> Product:
-    async with async_session() as session:
-        result = await session.execute(select(Product))
-        products = result.scalars().all()
-        # print(products)
+async def get_products_db(session: AsyncSession) -> List[Product]:
+    result = await session.execute(select(Product))
+    products = result.scalars().all()
     return products
 
 
-async def get_product_description_db(id: int) -> Product:
-    async with async_session() as session:
-        result = await session.execute(
-            select(Product.description).where(Product.id == id)
-        )
-        description = result.scalars().one_or_none()
-        # print(description)
+async def get_product_description_db(
+        session: AsyncSession,
+        id: int
+) -> Product:
+    result = await session.execute(
+        select(Product.description).where(Product.id == id)
+    )
+    description = result.scalars().one_or_none()
     return description
 
 
-async def update_product_discription_db(id: int, new_description: str) -> Product:
-    async with async_session() as session:
-        updated = await session.execute(
-            update(Product)
-            .where(Product.id == id)
-            .values(description=new_description)
-        )
-        await session.commit()
-        print(updated)
+async def update_product_discription_db(
+        session: AsyncSession,
+        id: int,
+        new_description: str
+) -> Product:
+    updated = await session.execute(
+        update(Product)
+        .where(Product.id == id)
+        .values(description=new_description)
+    )
+    await session.commit()
+    print(updated)
     return updated
 
-async def delete_product_db(id: int) -> None:
-    async with async_session() as session:
-        await session.execute(
-            delete(Product)
-            .where(Product.id == id)
-        )
-        await session.commit()
+
+async def delete_product_db(session: AsyncSession, id: int) -> None:
+    await session.execute(
+        delete(Product)
+        .where(Product.id == id)
+    )
+    await session.commit()
 
 
-async def get_product_by_id_db(id: int) -> Product:
-    async with async_session() as session:
-        result = await session.execute(select(Product).where(Product.id == id))
-        product = result.scalar_one_or_none()
+async def get_product_by_id_db(session: AsyncSession, id: int) -> Product:
+    result = await session.execute(select(Product).where(Product.id == id))
+    product = result.scalar_one_or_none()
     if not product:
         raise ValueError('Такого товара нет в базе')
     return product
@@ -78,17 +86,26 @@ class OrderReserv:
     Класс для работы с количеством товара
     """
     @staticmethod
-    async def reserve_product(product_id: int, quantity_needed: int) -> Product:
-        product = await get_product_by_id_db(product_id)
+    async def reserve_product(
+        session: AsyncSession,
+        product_id: int,
+        quantity_needed: int
+    ) -> Product:
+        product = await get_product_by_id_db(session, product_id)
         if not product or product.quantity < quantity_needed:
-            raise ValueError('Недостаточно товара на складе или товар не найден.')
+            raise ValueError(
+                'Недостаточно товара на складе или товар не найден.'
+            )
         product.quantity -= quantity_needed
         return product
 
 
 class OrderFactory:
     @staticmethod
-    async def create_order(items_data: List[OrderItemCreate]) -> Order:
+    async def create_order(
+        session: AsyncSession,
+        items_data: List[OrderItemCreate]
+    ) -> Order:
         """
         Создает заказ на основе списка товаров, введенных пользовавтелем.
         """
@@ -97,38 +114,46 @@ class OrderFactory:
         for item_data in items_data:
             product_id = item_data.model_dump()['product_id']
             quantity_needed = item_data.model_dump()['quantity']
-            product = await OrderReserv.reserve_product(product_id, quantity_needed)
-            
+            product = await OrderReserv.reserve_product(
+                session,
+                product_id,
+                quantity_needed
+            )
+
             order_item = OrderItem(
                 product=product,
                 order_quantity=quantity_needed
             )
             order.items.append(order_item)
-        async with async_session() as session:
-            session.add(order)
-            await session.commit()
-            await session.refresh(order)
+        session.add(order)
+        await session.commit()
+        await session.refresh(order)
         return order
 
-async def get_orders_db() -> Order:
-    async with async_session() as session:
-        result = await session.execute(select(Order))
-        orders = result.scalars().all()
+
+async def get_orders_db(session: AsyncSession) -> Order:
+    result = await session.execute(select(Order))
+    orders = result.scalars().all()
     return orders
 
 
-async def get_order_by_id_db(id: int) -> Order:
-    async with async_session() as session:
-        result = await session.execute(select(Order).where(Order.id == id))
-        order = result.scalars().one_or_none()
+async def get_order_by_id_db(session: AsyncSession, id: int) -> Order:
+    result = await session.execute(select(Order).where(Order.id == id))
+    order = result.scalars().one_or_none()
     if not order:
         raise ValueError('Такого заказа нет в базе')
     return order
 
 
-async def order_status_refresh_db(id: int, new_status: OrderStatus):
-    async with async_session() as session:
-        updated = await session.execute(update(Order).where(Order.id == id).values(status=new_status))
-        await session.commit()
+async def order_status_refresh_db(
+        session: AsyncSession,
+        id: int,
+        new_status: OrderStatus
+):
+    updated = await session.execute(
+        update(Order)
+        .where(Order.id == id)
+        .values(status=new_status)
+    )
+    await session.commit()
     return updated
-
