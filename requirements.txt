@@ -7,3 +7,5 @@ pytest
 alembic
 asyncpg
 httpx
+pytest
+pytest-asyncio

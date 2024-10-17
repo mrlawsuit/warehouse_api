@@ -45,8 +45,6 @@ async def update_product_description(
         id,
         new_description
     )
-    print(f'this is description: {new_description}')
-    print(f'this is update: {updated}')
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
