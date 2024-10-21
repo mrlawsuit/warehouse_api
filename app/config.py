@@ -1,1 +1,6 @@
-DATABASE_URL = 'postgresql+asyncpg://emobile:test@db/warehouse'
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+DATABASE_URL = os.getenv('DATABASE_URL')
